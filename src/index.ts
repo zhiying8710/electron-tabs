@@ -27,6 +27,7 @@ interface TabOptions {
   title?: string;
   visible?: boolean;
   webviewAttributes?: { [key: string]: any };
+  partition_generator?: ((tabGroup: TabGroup) => Promise<string>);
 }
 
 interface Badge {
@@ -191,10 +192,7 @@ class TabGroup extends HTMLElement {
     this.options.defaultTab = tab;
   }
 
-  addTab(args = this.options.defaultTab) {
-    if (typeof args === "function") {
-      args = args(this);
-    }
+  _addTab(args: TabOptions) {
     const id = this.newTabId;
     this.newTabId++;
     const tab = new Tab(this, id, args);
@@ -205,6 +203,26 @@ class TabGroup extends HTMLElement {
     }
     this.emit("tab-added", tab, this);
     return tab;
+  }
+
+  addTab(args = this.options.defaultTab) {
+    if (typeof args === "function") {
+      args = args(this);
+    }
+    const opts: TabOptions = args;
+    const webviewAttributes = opts.webviewAttributes;
+    const partition_generator = opts.partition_generator;
+    if (webviewAttributes && partition_generator) {
+      partition_generator(this).then((partition_id) => {
+        if (!partition_id) {
+          return;
+        }
+        opts.webviewAttributes.partition = partition_id;
+        this._addTab(opts);
+      });
+    } else {
+      return this._addTab(opts);
+    }
   }
 
   getTab(id: number) {
