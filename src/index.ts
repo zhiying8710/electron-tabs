@@ -205,7 +205,7 @@ class TabGroup extends HTMLElement {
     return tab;
   }
 
-  addTab(args = this.options.defaultTab) {
+  async addTab(args = this.options.defaultTab) {
     if (typeof args === "function") {
       args = args(this);
     }
@@ -213,16 +213,14 @@ class TabGroup extends HTMLElement {
     const webviewAttributes = opts.webviewAttributes;
     const partition_generator = opts.partition_generator;
     if (webviewAttributes && partition_generator) {
-      partition_generator(this).then((partition_id) => {
-        if (!partition_id) {
-          return;
-        }
-        opts.webviewAttributes.partition = partition_id;
-        this._addTab(opts);
-      });
-    } else {
-      return this._addTab(opts);
+      let partition_id = await partition_generator(this);
+      console.log('generated partition_id:', partition_id);
+      if (!partition_id) {
+        return false;
+      }
+      opts.webviewAttributes.partition = partition_id;
     }
+    return this._addTab(opts);
   }
 
   getTab(id: number) {
